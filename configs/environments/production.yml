@@ -1,0 +1,46 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  ADI-OS — Environment Configuration: Production                        ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
+environment: production
+
+logging:
+  level: INFO
+  format: json    # Structured JSON for log aggregation
+
+database:
+  host: ${DWH_HOST}
+  port: ${DWH_PORT}
+  database: ${DWH_DATABASE}
+  schema: public
+
+data_lake:
+  provider: ${DATA_LAKE_PROVIDER}
+  bucket: ${DATA_LAKE_BUCKET}
+  path: ${DATA_LAKE_PATH}
+
+compute:
+  max_workers: 16
+  memory_limit_gb: 64
+
+quality_gates:
+  gate_1_enabled: true    # Data Quality — MANDATORY
+  gate_2_enabled: true    # Analytics — MANDATORY
+  gate_3_enabled: true    # Model/Science — MANDATORY
+  gate_4_enabled: true    # Engineering — MANDATORY
+  gate_5_enabled: true    # Governance — MANDATORY
+  gate_6_enabled: true    # Independent Review — MANDATORY in production
+  gate_7_enabled: true    # Delivery — MANDATORY
+
+ml:
+  experiment_tracking: true
+  tracking_uri: ${MLFLOW_TRACKING_URI}
+  auto_log: true
+  max_training_hours: 24
+
+security:
+  pii_detection: true
+  secret_scanning: true
+  audit_logging: true
+  encryption_at_rest: true
+  encryption_in_transit: true

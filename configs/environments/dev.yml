@@ -1,0 +1,43 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  ADI-OS — Environment Configuration: Development                       ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
+environment: development
+
+logging:
+  level: DEBUG
+  format: console     # console | json
+
+database:
+  host: localhost
+  port: 5432
+  database: adi_os
+  schema: public
+
+data_lake:
+  provider: local
+  path: ./data
+
+compute:
+  max_workers: 4
+  memory_limit_gb: 8
+
+quality_gates:
+  gate_1_enabled: true
+  gate_2_enabled: true
+  gate_3_enabled: true
+  gate_4_enabled: true
+  gate_5_enabled: true
+  gate_6_enabled: false   # Disabled in dev (no independent reviewer)
+  gate_7_enabled: true
+
+ml:
+  experiment_tracking: true
+  tracking_uri: http://localhost:5000
+  auto_log: true
+  max_training_hours: 1
+
+security:
+  pii_detection: true
+  secret_scanning: true
+  audit_logging: true
