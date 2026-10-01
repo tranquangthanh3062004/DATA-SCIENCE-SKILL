@@ -1,0 +1,68 @@
+# ADI-OS dbt Project
+# Implements the Medallion Architecture: Bronze → Silver → Gold
+
+name: 'adi_os'
+version: '1.0.0'
+config-version: 2
+
+profile: 'adi_os'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+docs-paths: ["docs"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# ── Medallion Architecture Layer Configuration ──
+models:
+  adi_os:
+    # Bronze → Silver (Staging)
+    staging:
+      +materialized: view
+      +schema: silver
+      +tags: ['staging', 'silver']
+      +docs:
+        show: true
+
+    # Silver → Gold (Intermediate transformations)
+    intermediate:
+      +materialized: ephemeral
+      +tags: ['intermediate']
+
+    # Gold (Business-ready marts)
+    marts:
+      +materialized: table
+      +schema: gold
+      +tags: ['marts', 'gold']
+      +docs:
+        show: true
+
+    # Metrics (Semantic layer)
+    metrics:
+      +materialized: table
+      +schema: gold
+      +tags: ['metrics', 'gold']
+
+# ── Data Quality Tests ──
+tests:
+  +severity: error  # All test failures block pipeline
+
+# ── Seeds ──
+seeds:
+  adi_os:
+    +schema: reference
+
+# ── Variables ──
+vars:
+  # Date range for incremental models
+  start_date: '2024-01-01'
+  # Data quality thresholds
+  max_null_pct: 0.05
+  min_row_count: 100
