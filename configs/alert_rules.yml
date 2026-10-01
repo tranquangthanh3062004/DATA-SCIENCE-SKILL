@@ -1,0 +1,80 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  ADI-OS — Monitoring Alert Rules                                       ║
+# ║  Observability & Learning Plane configuration                          ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
+alerts:
+
+  # ── Pipeline Alerts ──
+  - name: pipeline_failure
+    severity: P1
+    condition: "pipeline_status == 'FAILED'"
+    message: "Pipeline {pipeline_name} failed at {timestamp}"
+    channels: [slack, email]
+    auto_action: "Create INCIDENT_REPORT.md and trigger self-healing"
+
+  - name: pipeline_latency
+    severity: P2
+    condition: "pipeline_duration_sec > sla_threshold_sec * 2"
+    message: "Pipeline {pipeline_name} exceeded 2x SLA ({duration_sec}s vs {sla_sec}s)"
+    channels: [slack]
+    auto_action: "Log in monitoring dashboard"
+
+  # ── Data Quality Alerts ──
+  - name: data_quality_gate_failure
+    severity: P0
+    condition: "gate_1_status == 'FAILED' AND severity == 'CRITICAL'"
+    message: "Gate 1 CRITICAL failure for {dataset_name}: {failure_details}"
+    channels: [slack, pagerduty]
+    auto_action: "HALT pipeline, quarantine failing rows"
+
+  - name: data_freshness_breach
+    severity: P1
+    condition: "data_freshness_hours > sla_threshold_hours"
+    message: "Dataset {dataset_name} is {freshness_hours}h stale (SLA: {sla_hours}h)"
+    channels: [slack]
+    auto_action: "Trigger ingestion retry"
+
+  - name: schema_drift_detected
+    severity: P1
+    condition: "schema_changed == true"
+    message: "Schema drift detected in {dataset_name}: {changes}"
+    channels: [slack, email]
+    auto_action: "HALT pipeline, notify Data Architect"
+
+  # ── Model Alerts ──
+  - name: model_performance_degradation
+    severity: P1
+    condition: "current_metric < baseline_metric * 0.95"
+    message: "Model {model_name} performance dropped: {current} vs baseline {baseline}"
+    channels: [slack, email]
+    auto_action: "Flag for retraining evaluation"
+
+  - name: prediction_drift
+    severity: P2
+    condition: "psi_score > 0.2"
+    message: "Prediction distribution shift detected for {model_name} (PSI: {psi_score})"
+    channels: [slack]
+    auto_action: "Log in monitoring, queue retraining ticket"
+
+  - name: feature_drift
+    severity: P2
+    condition: "feature_drift_score > 0.15"
+    message: "Feature drift detected in {feature_name} for model {model_name}"
+    channels: [slack]
+    auto_action: "Log in observability dashboard"
+
+  # ── Security Alerts ──
+  - name: secret_exposure
+    severity: P0
+    condition: "hardcoded_secret_detected == true"
+    message: "SECURITY CRITICAL: Hardcoded secret found in {file_path}"
+    channels: [pagerduty, slack, email]
+    auto_action: "Block merge, revoke credentials immediately"
+
+  - name: pii_exposure
+    severity: P0
+    condition: "unmasked_pii_detected == true"
+    message: "PII EXPOSURE: Unmasked {pii_type} found in {location}"
+    channels: [pagerduty, slack]
+    auto_action: "Quarantine data, notify Security Agent"

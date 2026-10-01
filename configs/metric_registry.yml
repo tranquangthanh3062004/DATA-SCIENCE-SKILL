@@ -1,0 +1,104 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  ADI-OS — Canonical Metric Registry                                    ║
+# ║  Single source of truth for all business KPIs and metrics              ║
+# ║  per SKILL.md Section 7 (Analytics & Metric Standard)                  ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
+# Every metric MUST have:
+#   - Unique name
+#   - Canonical formula (mathematical)
+#   - Grain (at what level is it computed)
+#   - Owner (responsible team/person)
+#   - Filters (standard exclusion criteria)
+
+metrics:
+
+  # ── Revenue Metrics ──
+  - name: gross_revenue
+    display_name: "Gross Revenue"
+    formula: "SUM(transaction_amount) WHERE transaction_status = 'completed'"
+    grain: daily
+    unit: USD
+    owner: finance_team
+    filters:
+      - "transaction_status = 'completed'"
+      - "transaction_date IS NOT NULL"
+    tags: [revenue, finance, p&l]
+
+  - name: net_revenue
+    display_name: "Net Revenue"
+    formula: "SUM(transaction_amount) - SUM(refund_amount) WHERE transaction_status IN ('completed', 'refunded')"
+    grain: daily
+    unit: USD
+    owner: finance_team
+    filters:
+      - "transaction_status IN ('completed', 'refunded')"
+    tags: [revenue, finance, p&l]
+
+  - name: average_order_value
+    display_name: "Average Order Value (AOV)"
+    formula: "SUM(transaction_amount) / COUNT(DISTINCT order_id) WHERE transaction_status = 'completed'"
+    grain: daily
+    unit: USD
+    owner: analytics_team
+    tags: [revenue, orders]
+
+  # ── User Metrics ──
+  - name: daily_active_users
+    display_name: "Daily Active Users (DAU)"
+    formula: "COUNT(DISTINCT user_id) WHERE event_date = target_date AND event_type IN ('page_view', 'purchase', 'search')"
+    grain: daily
+    unit: count
+    owner: product_team
+    tags: [engagement, users]
+
+  - name: monthly_active_users
+    display_name: "Monthly Active Users (MAU)"
+    formula: "COUNT(DISTINCT user_id) WHERE event_date BETWEEN DATE_TRUNC('month', target_date) AND target_date"
+    grain: monthly
+    unit: count
+    owner: product_team
+    tags: [engagement, users]
+
+  - name: user_retention_rate
+    display_name: "User Retention Rate"
+    formula: "COUNT(DISTINCT users_active_in_period_N AND period_N+1) / COUNT(DISTINCT users_active_in_period_N)"
+    grain: weekly
+    unit: ratio
+    owner: product_team
+    tags: [retention, users]
+
+  - name: churn_rate
+    display_name: "Churn Rate"
+    formula: "1 - retention_rate"
+    grain: monthly
+    unit: ratio
+    owner: product_team
+    tags: [retention, users, risk]
+
+  # ── Operational Metrics ──
+  - name: pipeline_success_rate
+    display_name: "Pipeline Success Rate"
+    formula: "COUNT(runs WHERE status = 'SUCCESS') / COUNT(all_runs)"
+    grain: daily
+    unit: ratio
+    owner: data_engineering
+    tags: [operations, reliability]
+
+  - name: data_freshness_hours
+    display_name: "Data Freshness (Hours)"
+    formula: "EXTRACT(HOURS FROM NOW() - MAX(updated_at))"
+    grain: hourly
+    unit: hours
+    owner: data_engineering
+    sla_threshold: 4  # Alert if > 4 hours stale
+    tags: [operations, sla]
+
+  - name: data_quality_score
+    display_name: "Data Quality Score"
+    formula: "(completeness + validity + uniqueness + consistency + freshness) / 5"
+    grain: daily
+    unit: ratio
+    owner: data_quality_team
+    sla_threshold: 0.95  # Alert if < 95%
+    tags: [quality, governance]
