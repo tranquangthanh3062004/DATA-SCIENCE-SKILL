@@ -1,0 +1,102 @@
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# ── Virtual Environments ──
+.venv/
+venv/
+env/
+.uv/
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# ── Environment & Secrets ──
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets/
+credentials/
+
+# ── Data Files (never commit raw data) ──
+data/raw/
+data/bronze/
+data/silver/
+data/gold/
+data/quarantine/
+*.csv
+*.tsv
+*.parquet
+*.avro
+*.orc
+*.xlsx
+*.xls
+!seeds/*.csv
+!examples/**/*.csv
+
+# ── Logs ──
+logs/
+*.log
+
+# ── Testing ──
+.coverage
+htmlcov/
+reports/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── ML Artifacts ──
+mlruns/
+wandb/
+models/artifacts/
+*.pkl
+*.joblib
+*.h5
+*.pt
+*.onnx
+!models/registry/.gitkeep
+
+# ── Jupyter ──
+.ipynb_checkpoints/
+*.ipynb_metadata/
+
+# ── dbt ──
+dbt_project/target/
+dbt_project/dbt_packages/
+dbt_project/logs/
+
+# ── Terraform ──
+infrastructure/terraform/.terraform/
+infrastructure/terraform/*.tfstate
+infrastructure/terraform/*.tfstate.backup
+infrastructure/terraform/*.tfvars
+
+# ── Docker ──
+*.tar
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Great Expectations ──
+contracts/great_expectations/uncommitted/
+
+# ── Documentation Build ──
+docs/site/

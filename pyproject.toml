@@ -1,0 +1,181 @@
+[project]
+name = "adi-os"
+version = "0.1.0"
+description = "Autonomous Data Intelligence Operating System — Enterprise-Grade Multi-Agent Data & AI Platform"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [
+    { name = "ADI-OS Team" },
+]
+keywords = ["data-engineering", "analytics", "machine-learning", "data-quality", "governance"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Database",
+]
+
+dependencies = [
+    # ── Core ──
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "structlog>=24.1.0",
+    "click>=8.1.0",
+    "rich>=13.7.0",
+    "typer>=0.9.0",
+
+    # ── Data Foundation ──
+    "pandas>=2.2.0",
+    "polars>=0.20.0",
+    "pyarrow>=15.0.0",
+    "sqlalchemy>=2.0.0",
+    "duckdb>=0.10.0",
+    "deltalake>=0.15.0",
+
+    # ── Analytics & BI ──
+    "plotly>=5.18.0",
+    "matplotlib>=3.8.0",
+    "seaborn>=0.13.0",
+
+    # ── Statistics & Science ──
+    "scipy>=1.12.0",
+    "statsmodels>=0.14.0",
+    "pingouin>=0.5.4",
+
+    # ── Machine Learning ──
+    "scikit-learn>=1.4.0",
+    "xgboost>=2.0.0",
+    "lightgbm>=4.3.0",
+    "shap>=0.45.0",
+
+    # ── Data Quality ──
+    "great-expectations>=0.18.0",
+    "pandera>=0.18.0",
+]
+
+[project.optional-dependencies]
+# Deep Learning
+dl = [
+    "torch>=2.2.0",
+    "transformers>=4.38.0",
+]
+# Forecasting
+forecast = [
+    "prophet>=1.1.5",
+    "sktime>=0.27.0",
+    "statsforecast>=1.7.0",
+]
+# MLOps
+mlops = [
+    "mlflow>=2.11.0",
+    "optuna>=3.5.0",
+    "wandb>=0.16.0",
+]
+# Orchestration
+orchestration = [
+    "dagster>=1.6.0",
+    "dagster-webserver>=1.6.0",
+]
+# Serving
+serving = [
+    "fastapi>=0.110.0",
+    "uvicorn>=0.27.0",
+    "httpx>=0.27.0",
+]
+# Development
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-mock>=3.12.0",
+    "ruff>=0.3.0",
+    "mypy>=1.8.0",
+    "pre-commit>=3.6.0",
+    "ipykernel>=6.29.0",
+    "jupyter>=1.0.0",
+    "nbstripout>=0.7.0",
+]
+# All optional dependencies
+all = [
+    "adi-os[dl,forecast,mlops,orchestration,serving,dev]",
+]
+
+[project.scripts]
+adi = "src.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+# ── Ruff (Linting & Formatting) ──
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking
+    "RUF", # ruff-specific
+]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+
+# ── Pytest ──
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--tb=short",
+    "-q",
+    "--cov=src",
+    "--cov-report=term-missing",
+    "--cov-report=html:reports/coverage",
+]
+markers = [
+    "unit: Unit tests (fast, no I/O)",
+    "integration: Integration tests (may use DB or file I/O)",
+    "data_quality: Data quality gate tests",
+    "ml: Machine learning pipeline tests",
+    "slow: Tests that take > 30s",
+]
+
+# ── MyPy ──
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = [
+    "great_expectations.*",
+    "pandera.*",
+    "mlflow.*",
+    "shap.*",
+    "xgboost.*",
+    "lightgbm.*",
+]
+ignore_missing_imports = true
