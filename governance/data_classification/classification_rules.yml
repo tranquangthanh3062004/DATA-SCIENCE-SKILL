@@ -1,0 +1,106 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  ADI-OS — Data Classification Rules (Gate 5: Governance)               ║
+# ║  PII detection patterns and data classification tiers                  ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
+# Classification Tiers (per QUALITY_GATE.md Gate 5)
+classification_tiers:
+  PUBLIC:
+    description: "Non-sensitive data safe for external sharing"
+    access: "All users"
+    examples: ["product catalog", "store locations", "public reports"]
+
+  INTERNAL:
+    description: "Internal business data, not for external distribution"
+    access: "Authenticated employees"
+    examples: ["sales aggregates", "operational KPIs", "internal dashboards"]
+
+  CONFIDENTIAL:
+    description: "Sensitive business data requiring access control"
+    access: "Role-based access, need-to-know basis"
+    examples: ["customer segments", "pricing strategies", "financial forecasts"]
+
+  RESTRICTED:
+    description: "Highly sensitive data — PII, financial, health"
+    access: "Explicit approval required, audit logged"
+    examples: ["customer PII", "payment info", "health records", "SSN"]
+
+# PII Detection Patterns
+pii_patterns:
+  - name: email
+    pattern: '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+    classification: RESTRICTED
+    action: hash_or_mask
+    masking_strategy: "hash_sha256"
+
+  - name: phone_number
+    pattern: '(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}'
+    classification: RESTRICTED
+    action: mask
+    masking_strategy: "replace_with_asterisks"
+
+  - name: ssn
+    pattern: '\d{3}-\d{2}-\d{4}'
+    classification: RESTRICTED
+    action: drop_or_tokenize
+    masking_strategy: "tokenize"
+
+  - name: credit_card
+    pattern: '\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}'
+    classification: RESTRICTED
+    action: drop_or_tokenize
+    masking_strategy: "tokenize"
+
+  - name: ip_address
+    pattern: '\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}'
+    classification: CONFIDENTIAL
+    action: mask
+    masking_strategy: "anonymize_last_octet"
+
+  - name: date_of_birth
+    pattern: '\d{4}[-/]\d{2}[-/]\d{2}'
+    classification: RESTRICTED
+    action: generalize
+    masking_strategy: "year_only"
+
+  - name: vietnamese_id
+    pattern: '\d{9}|\d{12}'
+    classification: RESTRICTED
+    action: tokenize
+    masking_strategy: "tokenize"
+
+# Column Name Patterns (flag columns by name)
+column_name_flags:
+  RESTRICTED:
+    - "*email*"
+    - "*phone*"
+    - "*ssn*"
+    - "*social_security*"
+    - "*credit_card*"
+    - "*ccn*"
+    - "*password*"
+    - "*secret*"
+    - "*dob*"
+    - "*date_of_birth*"
+    - "*cmnd*"
+    - "*cccd*"
+
+  CONFIDENTIAL:
+    - "*salary*"
+    - "*revenue*"
+    - "*profit*"
+    - "*ip_address*"
+    - "*address*"
+    - "*location*"
+
+# Retention Policies
+retention:
+  PUBLIC:
+    max_retention_days: null  # No limit
+  INTERNAL:
+    max_retention_days: 730   # 2 years
+  CONFIDENTIAL:
+    max_retention_days: 365   # 1 year
+  RESTRICTED:
+    max_retention_days: 90    # 90 days
+    require_justification: true
