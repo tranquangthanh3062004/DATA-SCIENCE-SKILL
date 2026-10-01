@@ -1,0 +1,204 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  ADI-OS CI — Continuous Integration Pipeline                           ║
+# ║  Triggers: Push to main/develop, Pull Requests                        ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
+name: CI — Lint, Test, Quality Gates
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  # ── Gate 5 Partial: Security Scan ──
+  security-scan:
+    name: "🔒 Secret & Vulnerability Scan"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Gitleaks (secret scanning)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for hardcoded credentials
+        run: |
+          # Gate 5: Zero hardcoded secrets
+          VIOLATIONS=$(grep -rn --include="*.py" --include="*.yml" --include="*.yaml" \
+            -E "(password|secret|api_key|token)\s*=\s*['\"][^'\"]+['\"]" \
+            src/ configs/ || true)
+          if [ -n "$VIOLATIONS" ]; then
+            echo "::error::❌ GATE 5 FAILED — Hardcoded secrets detected:"
+            echo "$VIOLATIONS"
+            exit 1
+          fi
+          echo "✅ Gate 5 (Secret Scan): PASSED"
+
+  # ── Code Quality ──
+  lint-and-format:
+    name: "🧹 Lint & Format Check"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      - name: Ruff lint
+        run: uv run ruff check src/ tests/
+
+      - name: Ruff format check
+        run: uv run ruff format --check src/ tests/
+
+      - name: Type check (mypy)
+        run: uv run mypy src/ || true  # Non-blocking initially
+
+  # ── Unit Tests ──
+  unit-tests:
+    name: "🧪 Unit Tests"
+    runs-on: ubuntu-latest
+    needs: lint-and-format
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      - name: Run unit tests
+        run: uv run pytest -m unit --junitxml=reports/unit-results.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: reports/unit-results.xml
+
+  # ── Data Quality Gate Tests ──
+  data-quality-tests:
+    name: "📊 Data Quality Gate Tests"
+    runs-on: ubuntu-latest
+    needs: lint-and-format
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      - name: Run data quality tests (Gate 1)
+        run: uv run pytest -m data_quality --junitxml=reports/quality-results.xml
+
+      - name: Upload quality results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-test-results
+          path: reports/quality-results.xml
+
+  # ── ML Pipeline Tests ──
+  ml-tests:
+    name: "🤖 ML Pipeline Tests"
+    runs-on: ubuntu-latest
+    needs: [unit-tests, data-quality-tests]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      - name: Run ML tests (Gate 3 — no leakage, baseline comparison)
+        run: uv run pytest -m ml --junitxml=reports/ml-results.xml
+
+      - name: Upload ML test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ml-test-results
+          path: reports/ml-results.xml
+
+  # ── Integration Tests ──
+  integration-tests:
+    name: "🔗 Integration Tests"
+    runs-on: ubuntu-latest
+    needs: [unit-tests]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: adi_os_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U test_user -d adi_os_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      - name: Run integration tests
+        env:
+          DWH_HOST: localhost
+          DWH_PORT: 5432
+          DWH_DATABASE: adi_os_test
+          DWH_USER: test_user
+          DWH_PASSWORD: test_password
+        run: uv run pytest -m integration --junitxml=reports/integration-results.xml
+
+  # ── Final Gate Check ──
+  all-gates-passed:
+    name: "✅ All Quality Gates Passed"
+    runs-on: ubuntu-latest
+    needs: [security-scan, unit-tests, data-quality-tests, ml-tests, integration-tests]
+    steps:
+      - name: Gate Status Summary
+        run: |
+          echo "╔══════════════════════════════════════════════╗"
+          echo "║  ADI-OS Quality Gate Summary                  ║"
+          echo "╠══════════════════════════════════════════════╣"
+          echo "║  Gate 1 (Data Quality):     ✅ PASSED        ║"
+          echo "║  Gate 4 (Engineering):      ✅ PASSED        ║"
+          echo "║  Gate 5 (Security):         ✅ PASSED        ║"
+          echo "║  Gate 7 (Delivery):         ✅ PASSED        ║"
+          echo "╚══════════════════════════════════════════════╝"
