@@ -1,0 +1,20 @@
+FROM python:3.11-slim
+
+WORKDIR /workspace
+
+RUN pip install --no-cache-dir \
+    jupyterlab>=4.0 \
+    ipykernel \
+    duckdb \
+    pandas \
+    polars \
+    pyarrow \
+    plotly \
+    matplotlib \
+    seaborn \
+    sqlalchemy \
+    psycopg2-binary
+
+EXPOSE 8888
+
+CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--NotebookApp.token=${JUPYTER_TOKEN}"]

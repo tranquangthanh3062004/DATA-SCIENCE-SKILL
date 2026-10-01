@@ -1,0 +1,84 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  ADI-OS — Local Development Stack                                      ║
+# ║  Usage: docker compose up -d                                           ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
+services:
+  # ── Data Warehouse (PostgreSQL) ──
+  postgres:
+    image: postgres:16-alpine
+    container_name: adi-os-postgres
+    environment:
+      POSTGRES_DB: adi_os
+      POSTGRES_USER: adi_user
+      POSTGRES_PASSWORD: adi_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/docker/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U adi_user -d adi_os"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Analytical Query Engine (DuckDB via Jupyter) ──
+  jupyter:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.jupyter
+    container_name: adi-os-jupyter
+    ports:
+      - "8888:8888"
+    volumes:
+      - .:/workspace
+    environment:
+      - JUPYTER_TOKEN=adi-os-dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── MLflow Tracking Server ──
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.11.0
+    container_name: adi-os-mlflow
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:///mlflow/mlflow.db
+      --default-artifact-root /mlflow/artifacts
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow
+
+  # ── Monitoring (Grafana) ──
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: adi-os-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/datasources:/etc/grafana/provisioning/datasources
+
+  # ── Redis (Caching & Feature Store) ──
+  redis:
+    image: redis:7-alpine
+    container_name: adi-os-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  mlflow_data:
+  grafana_data:
+  redis_data:
