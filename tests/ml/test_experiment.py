@@ -10,7 +10,6 @@ Tests that enforce:
 
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 import pytest
 from sklearn.dummy import DummyClassifier
@@ -20,7 +19,6 @@ from src.ml.experiment import (
     Experiment,
     ExperimentConfig,
     SplitStrategy,
-    TaskType,
 )
 
 

@@ -10,7 +10,7 @@ from __future__ import annotations
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Generic, TypeVar
 
@@ -115,7 +115,7 @@ class BasePipeline(ABC, Generic[T_Input, T_Output]):
         Returns PipelineRunMetrics for observability.
         """
         set_context(task_id=f"PIPELINE-{self.name}", agent_id="data_engineer")
-        self._metrics.start_time = datetime.utcnow().isoformat()
+        self._metrics.start_time = datetime.now(UTC).isoformat()
         self._metrics.status = PipelineStatus.RUNNING
 
         logger.info("Pipeline started", pipeline=self.name, run_id=self._metrics.run_id)
@@ -160,6 +160,6 @@ class BasePipeline(ABC, Generic[T_Input, T_Output]):
         finally:
             elapsed = time.monotonic() - start
             self._metrics.duration_sec = round(elapsed, 2)
-            self._metrics.end_time = datetime.utcnow().isoformat()
+            self._metrics.end_time = datetime.now(UTC).isoformat()
 
         return self._metrics

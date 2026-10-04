@@ -19,7 +19,7 @@ Usage:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Protocol
 
@@ -36,7 +36,6 @@ from sklearn.metrics import (
     recall_score,
     roc_auc_score,
 )
-from sklearn.model_selection import TimeSeriesSplit
 
 from src.utils.logging_config import get_logger
 
@@ -54,10 +53,10 @@ class SplitStrategy(str, Enum):
     Time-dependent data must NEVER be split randomly.
     """
 
-    TEMPORAL = "temporal"           # Time-based forward split
-    TEMPORAL_CV = "temporal_cv"     # Walk-forward cross-validation
-    GROUPED = "grouped"             # Group-aware split (no group leakage)
-    STRATIFIED = "stratified"       # Stratified random (non-temporal only)
+    TEMPORAL = "temporal"  # Time-based forward split
+    TEMPORAL_CV = "temporal_cv"  # Walk-forward cross-validation
+    GROUPED = "grouped"  # Group-aware split (no group leakage)
+    STRATIFIED = "stratified"  # Stratified random (non-temporal only)
 
 
 class ModelProtocol(Protocol):
@@ -76,13 +75,13 @@ class ExperimentConfig:
     target: str
     task_type: TaskType = TaskType.CLASSIFICATION
     split_strategy: SplitStrategy = SplitStrategy.TEMPORAL
-    temporal_column: str | None = None          # Required for temporal splits
-    group_column: str | None = None             # Required for grouped splits
+    temporal_column: str | None = None  # Required for temporal splits
+    group_column: str | None = None  # Required for grouped splits
     test_size: float = 0.2
     validation_size: float = 0.15
     random_seed: int = 42
     subgroup_columns: list[str] = field(default_factory=list)  # For error analysis
-    feature_columns: list[str] = field(default_factory=list)   # Empty = auto-detect
+    feature_columns: list[str] = field(default_factory=list)  # Empty = auto-detect
 
 
 @dataclass
@@ -111,17 +110,17 @@ class ExperimentReport:
     candidate_results: list[ModelResult] = field(default_factory=list)
     best_model: str = ""
     gate_3_status: str = "PENDING"
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     def to_markdown(self) -> str:
         """Generate MODEL_EVALUATION.md content."""
         lines = [
             "---",
-            f'artifact_type: "MODEL_EVALUATION"',
+            'artifact_type: "MODEL_EVALUATION"',
             f'title: "Model Evaluation: {self.experiment_name}"',
             f'gate_3_status: "{self.gate_3_status}"',
             f'created_at: "{self.timestamp}"',
-            f"reproducibility:",
+            "reproducibility:",
             f"  seed: {self.config.random_seed}",
             "---",
             "",
@@ -155,7 +154,9 @@ class ExperimentReport:
         # Subgroup analysis
         if self.candidate_results and self.candidate_results[0].subgroup_metrics:
             lines.extend(["", "## Subgroup Error Analysis", ""])
-            best = next((r for r in self.candidate_results if r.model_name == self.best_model), self.candidate_results[0])
+            best = next(
+                (r for r in self.candidate_results if r.model_name == self.best_model), self.candidate_results[0]
+            )
             for group_key, group_metrics in best.subgroup_metrics.items():
                 lines.append(f"### {group_key}")
                 lines.append("| Metric | Value |")
@@ -211,13 +212,13 @@ class Experiment:
 
         np.random.seed(self.config.random_seed)
 
-        # Prepare features and target
+        # Prepare features and target.
+        # Default: numeric columns only (string/categorical columns require explicit
+        # encoding and must be listed in config.feature_columns after preprocessing).
+        excluded = {self.config.target, self.config.temporal_column, self.config.group_column}
+        excluded.update(self.config.subgroup_columns)
         feature_cols = self.config.feature_columns or [
-            c for c in df.columns
-            if c != self.config.target
-            and c != self.config.temporal_column
-            and c != self.config.group_column
-            and c not in self.config.subgroup_columns
+            c for c in df.select_dtypes(include="number").columns if c not in excluded
         ]
 
         X = df[feature_cols]
@@ -248,9 +249,7 @@ class Experiment:
                         mask = test_df[sg_col] == group_val
                         if mask.sum() > 10:  # Minimum sample size
                             sg_key = f"{sg_col}={group_val}"
-                            sg_metrics = self._compute_metrics(
-                                y_test[mask], predictions[mask], model, X_test[mask]
-                            )
+                            sg_metrics = self._compute_metrics(y_test[mask], predictions[mask], model, X_test[mask])
                             subgroup_metrics[sg_key] = sg_metrics
 
             result = ModelResult(
@@ -263,9 +262,7 @@ class Experiment:
 
             # Extract feature importance if available
             if hasattr(model, "feature_importances_"):
-                result.feature_importance = dict(
-                    zip(feature_cols, model.feature_importances_, strict=False)
-                )
+                result.feature_importance = dict(zip(feature_cols, model.feature_importances_, strict=False))
 
             if model_name == self._baseline_name:
                 report.baseline_result = result
@@ -275,7 +272,7 @@ class Experiment:
             logger.info("Model evaluated", model=model_name, metrics=metrics)
 
         # Determine best model
-        primary_metric = list(report.candidate_results[0].metrics.keys())[0] if report.candidate_results else ""
+        primary_metric = next(iter(report.candidate_results[0].metrics), "") if report.candidate_results else ""
         if report.candidate_results and primary_metric:
             best = max(report.candidate_results, key=lambda r: r.metrics.get(primary_metric, 0))
             report.best_model = best.model_name
@@ -305,8 +302,8 @@ class Experiment:
         self,
         df: pd.DataFrame,
         X: pd.DataFrame,
-        y: pd.Series,  # type: ignore[type-arg]
-    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.DataFrame]:  # type: ignore[type-arg]
+        y: pd.Series,
+    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.DataFrame]:
         """Split data according to the configured strategy (Gate 3 Check 2)."""
         if self.config.split_strategy in (SplitStrategy.TEMPORAL, SplitStrategy.TEMPORAL_CV):
             if self.config.temporal_column is None:
@@ -336,8 +333,10 @@ class Experiment:
             train_mask = df[self.config.group_column].isin(train_groups)
 
             return (
-                X[train_mask], X[~train_mask],
-                y[train_mask], y[~train_mask],
+                X[train_mask],
+                X[~train_mask],
+                y[train_mask],
+                y[~train_mask],
                 df[~train_mask],
             )
 
@@ -346,7 +345,8 @@ class Experiment:
             from sklearn.model_selection import train_test_split
 
             X_train, X_test, y_train, y_test = train_test_split(
-                X, y,
+                X,
+                y,
                 test_size=self.config.test_size,
                 random_state=self.config.random_seed,
                 stratify=y if self.config.task_type == TaskType.CLASSIFICATION else None,
@@ -356,7 +356,7 @@ class Experiment:
 
     def _compute_metrics(
         self,
-        y_true: pd.Series | np.ndarray,  # type: ignore[type-arg]
+        y_true: pd.Series | np.ndarray,
         y_pred: np.ndarray,
         model: Any,
         X: pd.DataFrame,
