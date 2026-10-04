@@ -80,12 +80,25 @@ class DataContract:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> DataContract:
         """Create a DataContract from a dictionary (e.g., loaded from YAML)."""
-        columns = {name: ColumnContract(**spec) for name, spec in data.get("columns", {}).items()}
+        raw_cols = data.get("columns", {})
+        columns: dict[str, ColumnContract] = {}
+        for col_name, spec in raw_cols.items():
+            if isinstance(spec, ColumnContract):
+                columns[col_name] = spec
+            else:
+                spec_copy = dict(spec)
+                columns[col_name] = ColumnContract(**spec_copy)
+
+        contract_name = data.get("name") or data.get("dataset_name", "unnamed_dataset")
+        pks = data.get("primary_keys") or data.get("primary_key", [])
+        if isinstance(pks, str):
+            pks = [pks]
+
         return cls(
-            name=data["name"],
+            name=contract_name,
             description=data.get("description", ""),
             owner=data.get("owner", "unknown"),
-            primary_keys=data.get("primary_keys", []),
+            primary_keys=pks,
             columns=columns,
             freshness_hours=data.get("freshness_hours"),
             max_null_percentage=data.get("max_null_percentage", 0.0),
@@ -98,6 +111,7 @@ class ColumnContract:
     """Contract specification for a single column."""
 
     dtype: str  # Expected pandas dtype string
+    name: str = ""  # Column name
     nullable: bool = False  # Whether nulls are allowed
     max_null_pct: float = 0.0  # Max null percentage (0.0 = no nulls)
     min_value: float | None = None  # Minimum allowed value
@@ -465,7 +479,8 @@ class DataQualityValidator:
 
             # Numeric range checks
             if col_contract.min_value is not None:
-                violations = self.df[col_name].dropna() < col_contract.min_value
+                numeric_series = pd.to_numeric(self.df[col_name], errors="coerce").dropna()
+                violations = numeric_series < col_contract.min_value
                 violation_count = int(violations.sum())
                 if violation_count > 0:
                     self._results.append(
@@ -490,7 +505,8 @@ class DataQualityValidator:
                     )
 
             if col_contract.max_value is not None:
-                violations = self.df[col_name].dropna() > col_contract.max_value
+                numeric_series = pd.to_numeric(self.df[col_name], errors="coerce").dropna()
+                violations = numeric_series > col_contract.max_value
                 violation_count = int(violations.sum())
                 if violation_count > 0:
                     self._results.append(
