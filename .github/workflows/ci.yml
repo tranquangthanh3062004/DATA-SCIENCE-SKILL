@@ -63,7 +63,7 @@ jobs:
         run: uv run ruff format --check src/ tests/
 
       - name: Type check (mypy)
-        run: uv run mypy src/ || true  # Non-blocking initially
+        run: uv run mypy src/
 
   # ── Unit Tests ──
   unit-tests:
