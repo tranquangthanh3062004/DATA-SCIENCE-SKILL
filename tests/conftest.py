@@ -11,14 +11,12 @@ Shared fixtures for all test categories:
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Any
 
 import numpy as np
 import pandas as pd
 import pytest
 
 from src.quality.validators import ColumnContract, DataContract
-
 
 # ── Sample Data Fixtures ──
 
@@ -32,14 +30,16 @@ def sample_transactions_df() -> pd.DataFrame:
     base_date = datetime(2025, 1, 1)
     dates = [base_date + timedelta(days=int(d)) for d in np.random.randint(0, 365, n)]
 
-    return pd.DataFrame({
-        "transaction_id": range(1, n + 1),
-        "customer_id": np.random.randint(100, 500, n),
-        "transaction_date": dates,
-        "amount": np.round(np.random.exponential(50, n), 2),
-        "category": np.random.choice(["electronics", "clothing", "food", "other"], n),
-        "store_id": np.random.randint(1, 20, n),
-    })
+    return pd.DataFrame(
+        {
+            "transaction_id": range(1, n + 1),
+            "customer_id": np.random.randint(100, 500, n),
+            "transaction_date": dates,
+            "amount": np.round(np.random.exponential(50, n), 2),
+            "category": np.random.choice(["electronics", "clothing", "food", "other"], n),
+            "store_id": np.random.randint(1, 20, n),
+        }
+    )
 
 
 @pytest.fixture
@@ -112,11 +112,13 @@ def sample_ml_df() -> pd.DataFrame:
     logit = 0.5 * X1 + 0.3 * X2 - 0.2 * X3 + noise
     target = (logit > 0).astype(int)
 
-    return pd.DataFrame({
-        "date": dates,
-        "feature_1": np.round(X1, 4),
-        "feature_2": np.round(X2, 4),
-        "feature_3": np.round(X3, 4),
-        "segment": np.random.choice(["A", "B", "C"], n),
-        "target": target,
-    })
+    return pd.DataFrame(
+        {
+            "date": dates,
+            "feature_1": np.round(X1, 4),
+            "feature_2": np.round(X2, 4),
+            "feature_3": np.round(X3, 4),
+            "segment": np.random.choice(["A", "B", "C"], n),
+            "target": target,
+        }
+    )

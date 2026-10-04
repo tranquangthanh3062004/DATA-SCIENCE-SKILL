@@ -8,7 +8,7 @@ DATA_QUALITY_REPORT.md artifacts per ARTIFACT_PROTOCOL.md standards.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 
@@ -66,7 +66,7 @@ class DataProfile:
         """Generate markdown report."""
         lines = [
             "---",
-            f'artifact_type: "DATA_QUALITY_REPORT"',
+            'artifact_type: "DATA_QUALITY_REPORT"',
             f'title: "Data Profile: {self.dataset_name}"',
             "---",
             "",
@@ -180,17 +180,16 @@ class DataProfiler:
             profile.max_val = float(desc.get("max", 0))
             profile.iqr = (profile.q75 or 0) - (profile.q25 or 0)
             try:
-                profile.skewness = float(series.skew())
-                profile.kurtosis = float(series.kurtosis())
+                profile.skewness = float(cast("float", series.skew()))
+                profile.kurtosis = float(cast("float", series.kurtosis()))
             except Exception:
                 pass
 
         # Top values for categorical
-        if pd.api.types.is_object_dtype(series) or pd.api.types.is_categorical_dtype(series):
+        if pd.api.types.is_object_dtype(series) or isinstance(series.dtype, pd.CategoricalDtype):
             top = series.value_counts().head(10)
             profile.top_values = [
-                {"value": str(val), "count": int(cnt), "pct": f"{cnt / count:.2%}"}
-                for val, cnt in top.items()
+                {"value": str(val), "count": int(cnt), "pct": f"{cnt / count:.2%}"} for val, cnt in top.items()
             ]
 
         return profile

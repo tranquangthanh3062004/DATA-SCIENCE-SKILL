@@ -13,12 +13,10 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-import numpy as np
 import pandas as pd
 import pytest
 
 from src.quality.validators import (
-    ColumnContract,
     DataContract,
     DataQualityValidator,
     GateStatus,
@@ -66,7 +64,7 @@ class TestPrimaryKeyUniqueness:
         # Introduce duplicate PKs
         df_dup = pd.concat([sample_transactions_df, sample_transactions_df.head(5)], ignore_index=True)
         # Reset transaction_id to create real duplicates
-        df_dup.loc[len(sample_transactions_df):, "transaction_id"] = range(1, 6)
+        df_dup.loc[len(sample_transactions_df) :, "transaction_id"] = range(1, 6)
         validator = DataQualityValidator(df_dup, sample_transactions_contract)
         report = validator.run_gate_1()
         assert report.gate_status == GateStatus.FAILED
@@ -127,8 +125,7 @@ class TestRangeInvariants:
         validator = DataQualityValidator(df_neg, sample_transactions_contract)
         report = validator.run_gate_1()
         range_fails = [
-            c for c in report.checks
-            if c.check_category == "Range Invariants" and c.status == GateStatus.FAILED
+            c for c in report.checks if c.check_category == "Range Invariants" and c.status == GateStatus.FAILED
         ]
         assert len(range_fails) > 0
 
@@ -164,8 +161,7 @@ class TestTemporalOrdering:
         validator = DataQualityValidator(df_future, sample_transactions_contract)
         report = validator.run_gate_1()
         temporal_fails = [
-            c for c in report.checks
-            if c.check_category == "Temporal Ordering" and c.status == GateStatus.FAILED
+            c for c in report.checks if c.check_category == "Temporal Ordering" and c.status == GateStatus.FAILED
         ]
         assert len(temporal_fails) > 0
 

@@ -44,9 +44,7 @@ def new_trace_id() -> str:
     return tid
 
 
-def _inject_context(
-    logger: Any, method_name: str, event_dict: dict[str, Any]
-) -> dict[str, Any]:
+def _inject_context(logger: Any, method_name: str, event_dict: dict[str, Any]) -> dict[str, Any]:
     """Structlog processor: inject trace/task/agent context into every log."""
     trace = _trace_id.get("")
     task = _task_id.get("")
@@ -62,9 +60,7 @@ def _inject_context(
     return event_dict
 
 
-def _add_severity_emoji(
-    logger: Any, method_name: str, event_dict: dict[str, Any]
-) -> dict[str, Any]:
+def _add_severity_emoji(logger: Any, method_name: str, event_dict: dict[str, Any]) -> dict[str, Any]:
     """Add visual severity indicators for console output."""
     emojis = {
         "debug": "🔍",
@@ -121,4 +117,5 @@ def get_logger(name: str = __name__) -> structlog.stdlib.BoundLogger:
         logger = get_logger(__name__)
         logger.info("Pipeline started", rows=1000, source="api")
     """
-    return structlog.get_logger(name)
+    logger: structlog.stdlib.BoundLogger = structlog.get_logger(name)
+    return logger
