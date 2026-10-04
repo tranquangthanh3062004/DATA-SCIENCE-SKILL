@@ -1,12 +1,15 @@
 ---
 name: autonomous-data-org
 description: >
-  Autonomous Data Intelligence Operating System (ADI-OS) operating as an integrated
-  organization of specialized AI agents across 7 domains (Foundation, Analytics & BI,
-  Statistics & Science, AI/ML, Quality & Governance, Knowledge & Research, Orchestration)
-  spanning 6 architectural planes. Enforces rigorous standards across data engineering,
-  analytics, statistics, causal inference, machine learning, forecasting, optimization,
-  data governance, decision intelligence, observability, and self-healing.
+  Autonomous Data Intelligence Operating System (ADI-OS): a rigorous, evidence-first
+  operating standard for data and AI work, run as a coordinated organization of 26
+  specialized roles across 7 domains and 6 architectural planes. Use when the task
+  involves data engineering (pipelines, dbt/SQL, medallion layers, ingestion, backfills),
+  analytics and KPIs, statistics, A/B tests and causal inference, machine learning and
+  forecasting, data quality/governance/security, model or pipeline review, incident
+  response, or producing data deliverables (reports, model cards, data contracts).
+  Enforces 7 quality gates, evidence tagging and a no-fabrication policy. Scales rigor
+  to the task (see Section 12); do not use for unrelated general programming or chat.
 ---
 
 # AUTONOMOUS DATA INTELLIGENCE OPERATING SYSTEM (ADI-OS)
@@ -240,7 +243,7 @@ Substantive projects must produce structured, versionable artifacts:
 
 ## 10. FINAL EXECUTIVE SYNTHESIS STRUCTURE
 
-Every final project response must follow the 16-point standard:
+Every final response for a Tier 2 or Tier 3 project (see Section 12) must follow the 16-point standard:
 1. Executive Summary
 2. Objective
 3. Data Sources
@@ -257,3 +260,91 @@ Every final project response must follow the 16-point standard:
 14. Artifacts Created & Locations
 15. Observability & Monitoring Plan
 16. Final Operational Status
+
+---
+
+## 11. REFERENCE MAP (PROGRESSIVE DISCLOSURE)
+
+This file is the constitution. Load detail on demand instead of guessing:
+
+| Need | Read |
+|---|---|
+| How to run a task: tiering, intake, handoffs, reviewer checklist, anti-patterns | `references/operating-playbook.md` |
+| Data engineering, medallion layers, idempotency, Gate 1 checks, dbt, security | `references/data-engineering-and-quality.md` |
+| Hypothesis tests, A/B tests, power, causal ladder, forecasting evaluation | `references/statistics-and-causal.md` |
+| Modeling: splits, leakage, baselines, metrics, calibration, monitoring | `references/machine-learning.md` |
+| Absolute maxims, evidence tags, stop conditions | `.agents/rules/data-org-rules.md` |
+| Agent routing cases, severity matrix, 16-point format | `.agents/rules/data-org-routing.md` |
+| Gate pass criteria and failure actions | `.agents/protocols/QUALITY_GATE.md` |
+| Agent FSM, task DAG, artifacts, autonomy limits | `.agents/protocols/AGENT_PROTOCOL.md`, `TASK_PROTOCOL.md`, `ARTIFACT_PROTOCOL.md`, `PERMISSION_POLICY.md` |
+| Artifact templates | `templates/*.template.md` |
+
+If this file and a protocol disagree, the stricter rule wins and the conflict is reported.
+
+---
+
+## 12. PROPORTIONALITY: SCALE RIGOR TO THE TASK
+
+State the tier in one line before working. Details in `references/operating-playbook.md`.
+
+| Tier | Examples | Gates | Output |
+|---|---|---|---|
+| T0 Quick | Concept question, short query, snippet review | Evidence tags, no fabrication | Direct answer |
+| T1 Standard | One-off analysis, bug fix, single transform | Gates 1 and 4 as relevant | Brief summary + tests |
+| T2 Project | New pipeline, model, dbt set, dashboard | Gates 1-5 and 7 | Artifacts + 16-point report |
+| T3 Critical | Production deploy, PII, high-stakes decisions, destructive ops | Gates 1-7 + human approval | Full artifact set + DECISION_LOG |
+
+Escalate a tier for sensitive data, irreversible actions, or decisions affecting money or people. Never skip a gate that applies; never run a gate that does not apply just to look thorough.
+
+---
+
+## 13. HONEST GATE STATUS & ROLE INDEPENDENCE
+
+- A gate may be reported `PASSED` only if its checks were **actually executed** and the output is cited. Otherwise report `NOT_VERIFIED` (not run) or `BLOCKED` (failed). Hardcoded or assumed PASSED banners are fabrication.
+- Roles are responsibilities, not separate minds. An agent reviewing its own work is **not** independent (Maxim 6, Rule 5). Gate 6 needs a separate subagent/session with fresh context, a human, or deterministic checks the author did not tailor. With none available, mark Gate 6 `NOT_VERIFIED - self-review only`.
+- Prefer executable evidence (run tests, validators, row-count reconciliations) over narrative assurance.
+- Disagreement between roles is surfaced and settled by an empirical test, not averaged.
+
+---
+
+## 14. EXECUTABLE TOOLKIT (THIS REPOSITORY)
+
+Use existing code before writing new code. Verify status before relying on it.
+
+| Capability | Location | Notes |
+|---|---|---|
+| Gate 1 validation (schema, PK, nulls, ranges, temporal) | `src/quality/validators.py` | `DataQualityValidator.run_gate_1`, `DataContract` |
+| Data profiling to `DATA_QUALITY_REPORT` | `src/quality/profiler.py` | `DataProfiler.profile` |
+| Gate 3 experiment runner (baseline required, temporal split, subgroups) | `src/ml/experiment.py` | `Experiment`, `ExperimentConfig` |
+| Pipeline base class | `src/pipelines/base.py` | Retry/idempotency/run-tracking still being completed; do not assume |
+| Settings, structured logging | `src/utils/config.py`, `src/utils/logging_config.py` | Secrets via env only |
+| Metric registry, alert rules, classification rules | `configs/`, `governance/` | Source of truth for KPIs, alerts, PII tiers |
+| Local stack and warehouse schemas | `docker-compose.yml`, `infrastructure/docker/init-db.sql` | bronze/silver/gold/quarantine/audit/monitoring |
+
+Verify with: `uv run ruff check src tests`, `uv run mypy src`, `uv run pytest`. Run them and report real results; do not claim a check passed from memory. Planned-but-missing modules (serving, CLI, run_checks) must not be described as available.
+
+---
+
+## 15. ROUTING QUICK TABLE
+
+Pick the smallest sufficient team (full chains in `.agents/rules/data-org-routing.md`).
+
+| Request looks like | Lead roles | Mandatory gates |
+|---|---|---|
+| "Why did metric X change?" | Analytics Engineer, Data Analyst, Statistician, Causal Agent | 1, 2 |
+| "Build/modify a pipeline or dbt model" | Data Architect, Data Engineer, Analytics Engineer, DQ Engineer, Security | 1, 4, 5 |
+| "Train/evaluate a model" | Data Scientist, ML Engineer, Model Reviewer | 1, 3, 4, 6 |
+| "Forecast demand/revenue" | Forecasting Scientist, DQ Engineer, Model Reviewer | 1, 3 |
+| "Run/analyze an A/B test" | Experimentation Scientist, Statistician | 2 |
+| "Pipeline/model broke or drifted" | Observability Agent, Data Engineer/Scientist | 1, 4 + incident flow (Section 8) |
+| "Is this safe to ship/share?" | Security Agent, Compliance Reviewer | 5, 6 |
+
+---
+
+## 16. OUTPUT & COMMUNICATION RULES
+
+- Reply in the user's language; keep tags, identifiers and code in English.
+- Lead with the decision or answer, then the evidence. Keep T0/T1 replies short.
+- Every number must come from executed code or a cited source; otherwise omit it or mark `UNKNOWN`.
+- Ask at most 3 clarifying questions, each with a recommended default; if unanswered, proceed on a labeled `[ASSUMPTION]`.
+- Synthetic data is always labeled `SYNTHETIC` and never supports business conclusions.
