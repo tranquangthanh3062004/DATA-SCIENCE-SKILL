@@ -6,7 +6,7 @@
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![Architecture: 6 Planes](https://img.shields.io/badge/Architecture-6%20Planes-blue.svg)](#-system-architecture)
 [![Agent Domains: 7](https://img.shields.io/badge/Agent%20Domains-7%20Domains%20%7C%2026%20Roles-emerald.svg)](#-agent-domains--specialized-roles)
-[![Quality Gates: 7](https://img.shields.io/badge/Quality%20Gates-Gates%201--7%20Active-brightgreen.svg)](#-the-7-mandatory-quality-gates)
+[![Quality Gates: 7 defined](https://img.shields.io/badge/Quality%20Gates-7%20defined%20%7C%20partially%20automated-yellow.svg)](#-project-status)
 [![Evidence Policy](https://img.shields.io/badge/Evidence%20Policy-Strict%20No--Fabrication-crimson.svg)](#-evidence-tagging--zero-fabrication-policy)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](#-license)
@@ -22,6 +22,24 @@ Instead of operating as an unconstrained single chatbot, ADI-OS enforces a stric
 QUESTION → EVIDENCE → DATA → QUALITY (GATE 1) → ENGINEERING → ANALYTICS
   → SCIENCE → MODEL → REVIEW (GATES 2–6) → DECISION → DELIVERY (GATE 7)
 ```
+
+---
+
+## 🚧 Project Status
+
+ADI-OS is in **alpha**. The agent specifications (`.agents/`) are complete; the execution layer is being built (see the implementation plan).
+
+| Area | Status |
+|---|---|
+| Agent skill, rules, protocols | Implemented |
+| Config, logging, Gate 1 validators, profiler, ML experiment (Gate 3) | Implemented, unit tested (`make lint typecheck test` pass) |
+| Pipeline base class | Implemented; retry, idempotency and run-tracking **Planned** |
+| dbt models | Examples only; sources, tests and profiles **Planned** |
+| Gates 2, 4, 5, 6, 7 automation | Partial (CI secret scan, deploy checks); the rest **Planned** |
+| `make quality-check`, `train`, `evaluate`, `serve`, `adi` CLI | **Planned** (modules not yet created) |
+| `monitoring/` (Grafana dashboards, runbooks) | **Planned** |
+| Artifact templates | 4 of 19 implemented |
+| Analytics, statistics, forecasting, causal, streaming modules | **Planned** |
 
 ---
 
@@ -158,17 +176,17 @@ DATA-SCIENCE-SKILL/
 ├── governance/                           # Data Governance
 │   └── data_classification/              #   4-tier classification rules + PII patterns
 │
-├── monitoring/                           # Observability & Monitoring
+├── monitoring/                           # (Planned) Observability & Monitoring
 │   ├── dashboards/                       #   Grafana dashboard definitions
 │   ├── datasources/                      #   Grafana datasource configs
 │   └── runbooks/                         #   Incident response procedures
 │
-├── templates/                            # Artifact Templates (19 types)
+├── templates/                            # Artifact Templates (4 implemented, 15 planned)
 │   ├── MODEL_CARD.template.md            #   ML model documentation
 │   ├── DATA_CONTRACT.template.md         #   Data ownership & SLA
 │   ├── INCIDENT_REPORT.template.md       #   5-whys root cause analysis
 │   ├── DATA_QUALITY_REPORT.template.md   #   Quality check results
-│   └── ...                               #   + 15 more artifact templates
+│   └── ...                               #   (Planned) remaining artifact templates
 │
 ├── docs/                                 # Documentation
 │   └── onboarding/                       #   New engineer onboarding guide
