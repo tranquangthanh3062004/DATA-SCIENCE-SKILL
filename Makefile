@@ -2,8 +2,9 @@
 # ║  ADI-OS — Development Command Center                                   ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
 
-.PHONY: help install lint format test test-unit test-integration test-quality \
-        docker-up docker-down dbt-run dbt-test quality-check serve clean
+.PHONY: help install install-prod lint format typecheck test test-unit test-integration \
+        test-quality test-ml quality-check profile-data dbt-run dbt-test dbt-docs \
+        train evaluate serve docker-up docker-down docker-build docs-serve docs-build clean
 
 PYTHON := python
 UV := uv
@@ -97,10 +98,6 @@ docs-build: ## Build documentation site
 	$(UV) run mkdocs build
 
 # ── Cleanup ──────────────────────────────────────────────────────────────
-clean: ## Remove build artifacts and caches
-	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
-	rm -rf dist/ build/ *.egg-info/ htmlcov/ reports/
-	@echo "✅ Cleaned all build artifacts"
+clean: ## Remove build artifacts and caches (cross-platform)
+	$(UV) run $(PYTHON) scripts/clean.py
+	@echo "Cleaned all build artifacts"
