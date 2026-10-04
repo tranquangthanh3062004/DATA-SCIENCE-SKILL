@@ -1,10 +1,14 @@
 # Autonomous Data Intelligence Operating System (ADI-OS)
+
 > **Level-4 Enterprise-Grade Multi-Agent Operating System for Data Engineering, Analytics Engineering, Data Science, AI/ML, and Decision Intelligence.**
 
+[![CI — Lint, Test, Quality Gates](https://github.com/tranquangthanh3062004/DATA-SCIENCE-SKILL/actions/workflows/ci.yml/badge.svg)](https://github.com/tranquangthanh3062004/DATA-SCIENCE-SKILL/actions/workflows/ci.yml)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![Architecture: 6 Planes](https://img.shields.io/badge/Architecture-6%20Planes-blue.svg)](#-system-architecture)
 [![Agent Domains: 7](https://img.shields.io/badge/Agent%20Domains-7%20Domains%20%7C%2026%20Roles-emerald.svg)](#-agent-domains--specialized-roles)
 [![Quality Gates: 7](https://img.shields.io/badge/Quality%20Gates-Gates%201--7%20Active-brightgreen.svg)](#-the-7-mandatory-quality-gates)
 [![Evidence Policy](https://img.shields.io/badge/Evidence%20Policy-Strict%20No--Fabrication-crimson.svg)](#-evidence-tagging--zero-fabrication-policy)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](#-license)
 
 ---
@@ -15,8 +19,67 @@ The **Autonomous Data Intelligence Operating System (ADI-OS)** is an integrated 
 
 Instead of operating as an unconstrained single chatbot, ADI-OS enforces a strict lifecycle:
 ```text
-QUESTION → EVIDENCE → DATA → QUALITY (GATE 1) → ENGINEERING → ANALYTICS 
+QUESTION → EVIDENCE → DATA → QUALITY (GATE 1) → ENGINEERING → ANALYTICS
   → SCIENCE → MODEL → REVIEW (GATES 2–6) → DECISION → DELIVERY (GATE 7)
+```
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Python 3.11+
+- [uv](https://docs.astral.sh/uv/) (recommended) or pip
+- Docker & Docker Compose (for local stack)
+
+### 1. Clone & Install
+```bash
+git clone https://github.com/tranquangthanh3062004/DATA-SCIENCE-SKILL.git
+cd DATA-SCIENCE-SKILL
+
+# Copy environment template
+cp .env.example .env
+
+# Install dependencies (using uv — recommended)
+uv sync --all-extras
+
+# Or with pip
+pip install -e ".[dev]"
+```
+
+### 2. Start Local Development Stack
+```bash
+# Spin up PostgreSQL, Jupyter, MLflow, Grafana, Redis
+make docker-up
+
+# Access services:
+#   Jupyter Lab  → http://localhost:8888 (token: adi-os-dev)
+#   MLflow UI    → http://localhost:5000
+#   Grafana      → http://localhost:3000 (admin/admin)
+#   PostgreSQL   → localhost:5432
+```
+
+### 3. Run Quality Gates & Tests
+```bash
+# Run all tests
+make test
+
+# Run specific test suites
+make test-unit        # Unit tests only
+make test-ml          # ML pipeline tests (Gate 3)
+make test-quality     # Data quality tests (Gate 1)
+
+# Lint & format
+make lint
+make format
+make typecheck
+```
+
+### 4. Run dbt Models (Medallion Architecture)
+```bash
+make dbt-run          # Bronze → Silver → Gold
+make dbt-test         # Schema & data tests
+make dbt-docs         # Generate & serve documentation
 ```
 
 ---
@@ -56,6 +119,69 @@ QUESTION → EVIDENCE → DATA → QUALITY (GATE 1) → ENGINEERING → ANALYTIC
 │ Monitoring / Drift / Evaluation / Incidents / Playbooks   │
 │           Self-Healing / Continuous Learning              │
 └───────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📂 Repository Structure
+
+```text
+DATA-SCIENCE-SKILL/
+├── .agents/                              # Agent Specifications & Governance
+│   ├── skills/autonomous-data-org/       #   Master SKILL.md (6 Planes, 7 Domains, 26 Roles)
+│   ├── rules/                            #   11 Absolute Maxims, Routing, Evidence Tagging
+│   └── protocols/                        #   Agent FSM, Task, Artifact, Quality Gate, Permission
+│
+├── src/                                  # Core Source Code
+│   ├── utils/                            #   Config management (Pydantic), structured logging
+│   ├── quality/                          #   Gate 1 validators, data profiler
+│   ├── pipelines/                        #   Base ETL pipeline with retry & observability
+│   └── ml/                               #   ML experiment framework with Gate 3 enforcement
+│
+├── tests/                                # Testing Framework
+│   ├── unit/                             #   Unit tests for data quality checks
+│   ├── ml/                               #   ML pipeline Gate 3 validation tests
+│   └── conftest.py                       #   Shared fixtures & sample data
+│
+├── configs/                              # Configuration Layer
+│   ├── metric_registry.yml               #   Canonical metric definitions (revenue, churn, DAU)
+│   ├── alert_rules.yml                   #   Monitoring & alerting rules
+│   └── environments/                     #   Dev / Production environment configs
+│
+├── dbt_project/                          # Analytics Engineering (Medallion Architecture)
+│   ├── models/staging/                   #   Bronze → Silver transformations
+│   └── models/marts/                     #   Silver → Gold business aggregations
+│
+├── infrastructure/                       # Infrastructure
+│   └── docker/                           #   Dockerfile.jupyter, init-db.sql (7 schemas)
+│
+├── governance/                           # Data Governance
+│   └── data_classification/              #   4-tier classification rules + PII patterns
+│
+├── monitoring/                           # Observability & Monitoring
+│   ├── dashboards/                       #   Grafana dashboard definitions
+│   ├── datasources/                      #   Grafana datasource configs
+│   └── runbooks/                         #   Incident response procedures
+│
+├── templates/                            # Artifact Templates (19 types)
+│   ├── MODEL_CARD.template.md            #   ML model documentation
+│   ├── DATA_CONTRACT.template.md         #   Data ownership & SLA
+│   ├── INCIDENT_REPORT.template.md       #   5-whys root cause analysis
+│   ├── DATA_QUALITY_REPORT.template.md   #   Quality check results
+│   └── ...                               #   + 15 more artifact templates
+│
+├── docs/                                 # Documentation
+│   └── onboarding/                       #   New engineer onboarding guide
+│
+├── .github/workflows/                    # CI/CD Pipelines
+│   ├── ci.yml                            #   Lint → Security → Test → Quality Gates
+│   └── deploy.yml                        #   Staging → Production with gate governance
+│
+├── docker-compose.yml                    # Local Dev Stack (PostgreSQL, Jupyter, MLflow, Grafana, Redis)
+├── pyproject.toml                        # Project config, dependencies, tooling
+├── Makefile                              # Developer command center
+├── .env.example                          # Environment variable template
+└── .gitignore                            # Comprehensive ignore rules
 ```
 
 ---
@@ -157,24 +283,29 @@ Every substantive statement in ADI-OS deliverables must be categorized:
 
 ---
 
-## 📂 Repository Structure & Phase 0 Protocols
+## 🛠️ Development Workflow
 
-```text
-DATA-SCIENCE-SKILL/
-├── README.md                                  # Repository overview and master specification
-└── .agents/
-    ├── skills/
-    │   └── autonomous-data-org/
-    │       └── SKILL.md                       # Master Skill: 6 Planes, 7 Domains, 26 Roles, Lifecycle
-    ├── rules/
-    │   ├── data-org-rules.md                  # 11 Absolute Maxims, Evidence Tagging, Anti-Leakage
-    │   └── data-org-routing.md                # Dynamic Task Routing, 7 Quality Gates, Severity System
-    └── protocols/
-        ├── AGENT_PROTOCOL.md                  # Agent FSM, structured JSON schema, conflict resolution
-        ├── TASK_PROTOCOL.md                   # 9-step decomposition pipeline, DAG execution, DoD
-        ├── ARTIFACT_PROTOCOL.md               # Artifact-First policy, frontmatter schema, templates
-        ├── QUALITY_GATE.md                    # Detailed verification checks for Gates 1 through 7
-        └── PERMISSION_POLICY.md               # 4-tier autonomy matrix (AUTO, REVIEW, APPROVAL, BLOCKED)
+```bash
+# Daily workflow
+make lint             # Check code quality
+make format           # Auto-fix formatting
+make test             # Run all tests
+make typecheck        # Static type checking
+
+# Data pipeline workflow
+make docker-up        # Start local stack
+make dbt-run          # Run medallion transformations
+make dbt-test         # Validate data quality
+make quality-check    # Run Gate 1 checks
+
+# ML workflow
+make train            # Run ML experiment
+make evaluate         # Evaluate model performance
+make serve            # Start model API server
+
+# Cleanup
+make clean            # Remove build artifacts
+make docker-down      # Stop local stack
 ```
 
 ---
@@ -211,6 +342,16 @@ All significant data, analytics, or ML deliverables follow this structure:
 14. **Artifacts Created** — Complete links to generated reports, code, schemas, and contracts
 15. **Observability & Monitoring Plan** — Metrics to track over time and drift detection parameters
 16. **Final Operational Status** — `PASSED`, `BLOCKED`, or `ESCALATED`
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feat/amazing-feature`)
+3. Follow [Conventional Commits](https://www.conventionalcommits.org/) format
+4. Ensure all Quality Gates pass (`make test && make lint && make typecheck`)
+5. Submit a Pull Request
 
 ---
 
