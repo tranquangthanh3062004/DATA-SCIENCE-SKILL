@@ -1,0 +1,17 @@
+apiVersion: 1
+
+# Grafana provisioning: ADI-OS warehouse (monitoring.* tables).
+# Credentials are injected from the container environment (see docker-compose.yml).
+datasources:
+  - name: ADI-OS Postgres
+    type: postgres
+    uid: adi-os-postgres
+    url: postgres:5432
+    user: ${DWH_USER}
+    isDefault: true
+    jsonData:
+      database: ${DWH_DATABASE}
+      sslmode: disable
+      postgresVersion: 1600
+    secureJsonData:
+      password: ${DWH_PASSWORD}

@@ -9,16 +9,16 @@ services:
     image: postgres:16-alpine
     container_name: adi-os-postgres
     environment:
-      POSTGRES_DB: adi_os
-      POSTGRES_USER: adi_user
-      POSTGRES_PASSWORD: adi_dev_password
+      POSTGRES_DB: ${DWH_DATABASE:-adi_os}
+      POSTGRES_USER: ${DWH_USER:-adi_user}
+      POSTGRES_PASSWORD: ${DWH_PASSWORD:?Set DWH_PASSWORD in .env}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infrastructure/docker/init-db.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U adi_user -d adi_os"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -34,7 +34,7 @@ services:
     volumes:
       - .:/workspace
     environment:
-      - JUPYTER_TOKEN=adi-os-dev
+      - JUPYTER_TOKEN=${JUPYTER_TOKEN:?Set JUPYTER_TOKEN in .env}
     depends_on:
       postgres:
         condition: service_healthy
@@ -61,8 +61,11 @@ services:
     ports:
       - "3000:3000"
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in .env}
       GF_USERS_ALLOW_SIGN_UP: "false"
+      DWH_DATABASE: ${DWH_DATABASE:-adi_os}
+      DWH_USER: ${DWH_USER:-adi_user}
+      DWH_PASSWORD: ${DWH_PASSWORD}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/dashboards:/etc/grafana/provisioning/dashboards

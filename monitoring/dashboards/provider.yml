@@ -1,0 +1,11 @@
+apiVersion: 1
+
+# Dashboard provider: loads every *.json dashboard placed in this directory.
+providers:
+  - name: adi-os
+    folder: ADI-OS
+    type: file
+    disableDeletion: false
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
