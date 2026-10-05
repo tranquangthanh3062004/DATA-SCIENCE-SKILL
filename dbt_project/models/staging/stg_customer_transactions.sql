@@ -39,6 +39,7 @@ renamed AS (
         -- Dimensions
         LOWER(TRIM(category)) AS product_category,
         LOWER(TRIM(payment_method)) AS payment_method,
+        LOWER(TRIM(transaction_status)) AS transaction_status,
 
         -- Temporal
         CAST(transaction_date AS TIMESTAMP) AS transaction_at,

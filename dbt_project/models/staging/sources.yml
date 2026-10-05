@@ -1,0 +1,19 @@
+version: 2
+
+sources:
+  - name: bronze
+    schema: bronze
+    description: "Raw ingested data — no transformations applied (see infrastructure/docker/init-db.sql)."
+    tables:
+      - name: raw_customer_transactions
+        description: "Raw customer transactions as delivered by the source system (all TEXT)."
+        loaded_at_field: _ingested_at
+        freshness:
+          warn_after: {count: 24, period: hour}
+          error_after: {count: 48, period: hour}
+        columns:
+          - name: transaction_id
+            tests:
+              - not_null
+          - name: transaction_status
+            description: "Lifecycle status, e.g. completed / refunded / cancelled."

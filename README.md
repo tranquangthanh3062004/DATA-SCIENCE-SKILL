@@ -71,9 +71,9 @@ pip install -e ".[dev]"
 make docker-up
 
 # Access services:
-#   Jupyter Lab  → http://localhost:8888 (token: adi-os-dev)
+#   Jupyter Lab  → http://localhost:8888 (token: $JUPYTER_TOKEN from .env)
 #   MLflow UI    → http://localhost:5000
-#   Grafana      → http://localhost:3000 (admin/admin)
+#   Grafana      → http://localhost:3000 (admin / $GRAFANA_ADMIN_PASSWORD from .env)
 #   PostgreSQL   → localhost:5432
 ```
 
@@ -95,9 +95,9 @@ make typecheck
 
 ### 4. Run dbt Models (Medallion Architecture)
 ```bash
-make dbt-run          # Bronze → Silver → Gold
-make dbt-test         # Schema & data tests
-make dbt-docs         # Generate & serve documentation
+# Requires: uv sync --extra dbt, the local stack running, and DWH_* vars exported
+dbt run  --project-dir dbt_project --profiles-dir dbt_project   # Bronze → Silver → Gold
+dbt test --project-dir dbt_project --profiles-dir dbt_project
 ```
 
 ---

@@ -16,6 +16,8 @@
 WITH transactions AS (
     SELECT *
     FROM {{ ref('stg_customer_transactions') }}
+    -- Canonical filter for gross_revenue / average_order_value (configs/metric_registry.yml)
+    WHERE transaction_status = 'completed'
 ),
 
 daily_summary AS (

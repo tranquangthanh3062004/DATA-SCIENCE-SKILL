@@ -1,0 +1,14 @@
+# dbt connection profile — every secret comes from environment variables (Gate 5).
+# Use with: dbt run --profiles-dir dbt_project --project-dir dbt_project
+adi_os:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('DWH_HOST', 'localhost') }}"
+      port: "{{ env_var('DWH_PORT', '5432') | as_number }}"
+      user: "{{ env_var('DWH_USER') }}"
+      password: "{{ env_var('DWH_PASSWORD') }}"
+      dbname: "{{ env_var('DWH_DATABASE', 'adi_os') }}"
+      schema: public
+      threads: 4
