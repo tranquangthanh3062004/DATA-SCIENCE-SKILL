@@ -186,19 +186,24 @@ jobs:
           DWH_PASSWORD: test_password
         run: uv run pytest -m integration --junitxml=reports/integration-results.xml
 
-  # ── Final Gate Check ──
+  # ── Final Gate Check (reports real upstream results — no hardcoded PASSED) ──
   all-gates-passed:
     name: "✅ All Quality Gates Passed"
     runs-on: ubuntu-latest
-    needs: [security-scan, unit-tests, data-quality-tests, ml-tests, integration-tests]
+    if: always()
+    needs: [security-scan, lint-and-format, unit-tests, data-quality-tests, ml-tests, integration-tests]
     steps:
       - name: Gate Status Summary
+        env:
+          RESULTS: ${{ toJSON(needs) }}
         run: |
-          echo "╔══════════════════════════════════════════════╗"
-          echo "║  ADI-OS Quality Gate Summary                  ║"
-          echo "╠══════════════════════════════════════════════╣"
-          echo "║  Gate 1 (Data Quality):     ✅ PASSED        ║"
-          echo "║  Gate 4 (Engineering):      ✅ PASSED        ║"
-          echo "║  Gate 5 (Security):         ✅ PASSED        ║"
-          echo "║  Gate 7 (Delivery):         ✅ PASSED        ║"
-          echo "╚══════════════════════════════════════════════╝"
+          echo "## ADI-OS Quality Gate Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Job | Result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "$RESULTS" | jq -r 'to_entries[] | "| \(.key) | \(.value.result) |"' >> "$GITHUB_STEP_SUMMARY"
+          failed=$(echo "$RESULTS" | jq -r '[to_entries[] | select(.value.result != "success")] | length')
+          if [ "$failed" -ne 0 ]; then
+            echo "::error::❌ $failed gate job(s) did not succeed"
+            exit 1
+          fi
+          echo "✅ All gate jobs succeeded"
