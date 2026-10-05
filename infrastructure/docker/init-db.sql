@@ -29,9 +29,25 @@ CREATE TABLE IF NOT EXISTS audit.agent_actions (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_audit_task ON audit.agent_actions(task_id);
-CREATE INDEX idx_audit_agent ON audit.agent_actions(agent_id);
-CREATE INDEX idx_audit_ts ON audit.agent_actions(timestamp);
+CREATE INDEX IF NOT EXISTS idx_audit_task ON audit.agent_actions(task_id);
+CREATE INDEX IF NOT EXISTS idx_audit_agent ON audit.agent_actions(agent_id);
+CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit.agent_actions(timestamp);
+
+-- ── Bronze: raw customer transactions (source for dbt staging) ──
+-- Raw layer keeps loose types (TEXT) so ingestion never fails on malformed input;
+-- casting and validation happen in stg_customer_transactions (Silver).
+CREATE TABLE IF NOT EXISTS bronze.raw_customer_transactions (
+    transaction_id      TEXT,
+    customer_id         TEXT,
+    store_id            TEXT,
+    amount              TEXT,
+    category            TEXT,
+    payment_method      TEXT,
+    transaction_status  TEXT,
+    transaction_date    TEXT,
+    _ingested_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    _source_file        TEXT
+);
 
 -- ── Data Quality Scores Table ──
 CREATE TABLE IF NOT EXISTS monitoring.data_quality_scores (
