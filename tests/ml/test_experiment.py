@@ -12,13 +12,15 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
-from sklearn.dummy import DummyClassifier
-from sklearn.linear_model import LogisticRegression
+from sklearn.dummy import DummyClassifier, DummyRegressor
+from sklearn.linear_model import LinearRegression, LogisticRegression
 
 from src.ml.experiment import (
     Experiment,
     ExperimentConfig,
     SplitStrategy,
+    TaskType,
+    is_lower_better,
 )
 
 
@@ -98,6 +100,52 @@ class TestModelComparison:
         assert report.baseline_result is not None
         assert len(report.candidate_results) == 1
         assert report.gate_3_status in ("PASSED", "FAILED")
+
+    @pytest.mark.ml
+    def test_regression_selects_lowest_error_and_passes_gate(self, sample_ml_df: pd.DataFrame) -> None:
+        """B1 regression: RMSE is lower-is-better; a real model must beat a mean baseline."""
+        df = sample_ml_df.copy()
+        df["y"] = 3.0 * df["feature_1"] - 2.0 * df["feature_2"] + 0.1 * df["feature_3"]
+        config = ExperimentConfig(
+            name="test_regression",
+            target="y",
+            task_type=TaskType.REGRESSION,
+            split_strategy=SplitStrategy.TEMPORAL,
+            temporal_column="date",
+            feature_columns=["feature_1", "feature_2", "feature_3"],
+        )
+        experiment = Experiment(config)
+        experiment.add_baseline("mean", DummyRegressor(strategy="mean"))
+        experiment.add_model("linear", LinearRegression())
+        experiment.add_model("constant_bad", DummyRegressor(strategy="constant", constant=100.0))
+
+        report = experiment.run(df)
+
+        assert report.best_model == "linear"
+        assert report.gate_3_status == "PASSED"
+
+    @pytest.mark.ml
+    def test_unknown_primary_metric_raises(self, sample_ml_df: pd.DataFrame) -> None:
+        config = ExperimentConfig(
+            name="test_bad_metric",
+            target="target",
+            split_strategy=SplitStrategy.TEMPORAL,
+            temporal_column="date",
+            primary_metric="does_not_exist",
+        )
+        experiment = Experiment(config)
+        experiment.add_baseline("baseline", DummyClassifier(strategy="most_frequent", random_state=42))
+        experiment.add_model("logistic", LogisticRegression(random_state=42))
+
+        with pytest.raises(ValueError, match="Primary metric"):
+            experiment.run(sample_ml_df)
+
+    @pytest.mark.ml
+    def test_is_lower_better(self) -> None:
+        assert is_lower_better("RMSE")
+        assert is_lower_better("log_loss")
+        assert not is_lower_better("f1")
+        assert not is_lower_better("r2")
 
 
 class TestSubgroupAnalysis:

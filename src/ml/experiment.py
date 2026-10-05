@@ -82,6 +82,16 @@ class ExperimentConfig:
     random_seed: int = 42
     subgroup_columns: list[str] = field(default_factory=list)  # For error analysis
     feature_columns: list[str] = field(default_factory=list)  # Empty = auto-detect
+    primary_metric: str | None = None  # None = task default (f1 / rmse)
+
+
+LOWER_IS_BETTER_METRICS = frozenset({"mae", "mse", "rmse", "log_loss", "mape"})
+DEFAULT_PRIMARY_METRIC = {"classification": "f1", "regression": "rmse"}
+
+
+def is_lower_better(metric: str) -> bool:
+    """Return True when a smaller value of ``metric`` means a better model."""
+    return metric.lower() in LOWER_IS_BETTER_METRICS
 
 
 @dataclass
@@ -272,16 +282,27 @@ class Experiment:
             logger.info("Model evaluated", model=model_name, metrics=metrics)
 
         # Determine best model
-        primary_metric = next(iter(report.candidate_results[0].metrics), "") if report.candidate_results else ""
-        if report.candidate_results and primary_metric:
-            best = max(report.candidate_results, key=lambda r: r.metrics.get(primary_metric, 0))
+        primary_metric = self.config.primary_metric or DEFAULT_PRIMARY_METRIC[self.config.task_type.value]
+        lower_better = is_lower_better(primary_metric)
+        if report.candidate_results:
+            missing = [r.model_name for r in report.candidate_results if primary_metric not in r.metrics]
+            if missing:
+                raise ValueError(f"Primary metric '{primary_metric}' not computed for models: {missing}")
+
+            def _score(r: ModelResult) -> float:
+                return r.metrics[primary_metric]
+
+            best = (
+                min(report.candidate_results, key=_score) if lower_better else max(report.candidate_results, key=_score)
+            )
             report.best_model = best.model_name
 
-            # Gate 3 Pass: candidate must beat baseline
+            # Gate 3 Pass: candidate must beat baseline (direction-aware)
             if report.baseline_result:
-                baseline_score = report.baseline_result.metrics.get(primary_metric, 0)
-                best_score = best.metrics.get(primary_metric, 0)
-                if best_score > baseline_score:
+                baseline_score = report.baseline_result.metrics[primary_metric]
+                best_score = best.metrics[primary_metric]
+                beats = best_score < baseline_score if lower_better else best_score > baseline_score
+                if beats:
                     report.gate_3_status = "PASSED"
                     logger.info(
                         "Gate 3 PASSED — candidate beats baseline",
