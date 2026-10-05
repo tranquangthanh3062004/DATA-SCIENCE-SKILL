@@ -12,9 +12,12 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar
 
 from src.utils.logging_config import get_logger, new_trace_id, set_context
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = get_logger(__name__)
 
@@ -76,6 +79,33 @@ class BasePipeline(ABC, Generic[T_Input, T_Output]):
 
     MAX_RETRIES: int = 3
     RETRY_BACKOFF_SEC: float = 2.0
+    # Only I/O-style failures are retried. Logic/validation errors fail fast.
+    RETRYABLE_EXCEPTIONS: ClassVar[tuple[type[BaseException], ...]] = (ConnectionError, TimeoutError)
+
+    def _with_retry(self, step: str, fn: Callable[[Any], Any], arg: Any) -> Any:
+        """Run ``fn(arg)``, retrying transient errors with exponential backoff."""
+        attempt = 0
+        while True:
+            try:
+                return fn(arg)
+            except self.RETRYABLE_EXCEPTIONS as e:
+                if attempt >= self.MAX_RETRIES:
+                    raise
+                delay = self.RETRY_BACKOFF_SEC * (2**attempt)
+                attempt += 1
+                self._metrics.retry_count += 1
+                self._metrics.status = PipelineStatus.RETRYING
+                logger.warning(
+                    "Transient failure — retrying",
+                    pipeline=self.name,
+                    step=step,
+                    attempt=attempt,
+                    max_retries=self.MAX_RETRIES,
+                    delay_sec=delay,
+                    error=str(e),
+                )
+                time.sleep(delay)
+                self._metrics.status = PipelineStatus.RUNNING
 
     def __init__(self) -> None:
         self._metrics = PipelineRunMetrics(
@@ -122,22 +152,22 @@ class BasePipeline(ABC, Generic[T_Input, T_Output]):
         start = time.monotonic()
 
         try:
-            # Extract
+            # Extract (retried on transient errors)
             logger.info("Extracting data", pipeline=self.name)
-            raw_data = self.extract(source)
+            raw_data = self._with_retry("extract", self.extract, source)
 
-            # Transform
+            # Transform (pure — not retried)
             logger.info("Transforming data", pipeline=self.name)
             transformed = self.transform(raw_data)
 
-            # Validate
+            # Validate (never retried — Gate 4 block)
             logger.info("Validating output", pipeline=self.name)
             if not self.validate(transformed):
                 raise ValueError("Output validation failed — Gate 4 check blocked load")
 
-            # Load
+            # Load (retried on transient errors; load() must be idempotent)
             logger.info("Loading data", pipeline=self.name)
-            self.load(transformed)
+            self._with_retry("load", self.load, transformed)
 
             self._metrics.status = PipelineStatus.SUCCESS
             logger.info(
