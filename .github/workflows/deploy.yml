@@ -2,6 +2,10 @@
 # ║  ADI-OS — Model Deployment Pipeline                                    ║
 # ║  Enforces Gate 3, 6, 7 before production deployment                   ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
+#
+# Security: workflow inputs are NEVER interpolated directly into shell scripts
+# (`${{ inputs.* }}` inside `run:` enables script injection). They are passed via
+# `env:` and validated against a strict allow-list regex first.
 
 name: CD — Model Deployment
 
@@ -9,11 +13,11 @@ on:
   workflow_dispatch:
     inputs:
       model_name:
-        description: "Model name to deploy"
+        description: "Model name to deploy (lowercase, digits, - or _)"
         required: true
         type: string
       model_version:
-        description: "Model version (semantic)"
+        description: "Model version (semantic, e.g. 1.2.0)"
         required: true
         type: string
       environment:
@@ -24,37 +28,57 @@ on:
           - staging
           - production
 
+permissions:
+  contents: read
+
+env:
+  MODEL_NAME: ${{ inputs.model_name }}
+  MODEL_VERSION: ${{ inputs.model_version }}
+
 jobs:
+  # ── Input validation (blocks script/path injection) ──
+  validate-inputs:
+    name: "🛡️ Validate inputs"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate model name and version
+        run: |
+          if ! [[ "$MODEL_NAME" =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]]; then
+            echo "::error::Invalid model_name — allowed: ^[a-z0-9][a-z0-9_-]{0,63}$"
+            exit 1
+          fi
+          if ! [[ "$MODEL_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid model_version — expected semantic version X.Y.Z"
+            exit 1
+          fi
+          echo "✅ Inputs valid"
+
   # ── Gate 3: Model Science Review ──
   gate-3-model-review:
     name: "🔬 Gate 3 — Model Science Validation"
     runs-on: ubuntu-latest
+    needs: validate-inputs
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify MODEL_CARD.md exists
+      - name: Verify required model artifacts
         run: |
-          if [ ! -f "models/${{ inputs.model_name }}/MODEL_CARD.md" ]; then
-            echo "::error::❌ Gate 3 FAILED — MODEL_CARD.md not found"
-            exit 1
-          fi
-          echo "✅ MODEL_CARD.md present"
-
-      - name: Verify MODEL_EVALUATION.md exists
-        run: |
-          if [ ! -f "models/${{ inputs.model_name }}/MODEL_EVALUATION.md" ]; then
-            echo "::error::❌ Gate 3 FAILED — MODEL_EVALUATION.md not found"
-            exit 1
-          fi
-          echo "✅ MODEL_EVALUATION.md present"
-
-      - name: Verify baseline comparison
-        run: |
-          if ! grep -q "baseline" "models/${{ inputs.model_name }}/MODEL_EVALUATION.md"; then
+          dir="models/${MODEL_NAME}"
+          for f in MODEL_CARD.md MODEL_EVALUATION.md; do
+            if [ ! -f "$dir/$f" ]; then
+              echo "::error::❌ Gate 3 FAILED — $dir/$f not found"
+              exit 1
+            fi
+          done
+          if ! grep -qi "baseline" "$dir/MODEL_EVALUATION.md"; then
             echo "::error::❌ Gate 3 FAILED — No baseline comparison found"
             exit 1
           fi
-          echo "✅ Baseline comparison documented"
+          if ! grep -q "Gate 3 Status:\*\* \`PASSED\`" "$dir/MODEL_EVALUATION.md"; then
+            echo "::error::❌ Gate 3 FAILED — MODEL_EVALUATION.md does not report Gate 3 PASSED"
+            exit 1
+          fi
+          echo "✅ Gate 3 artifacts present and passing"
 
   # ── Gate 6: Independent Review ──
   gate-6-independent-review:
@@ -66,10 +90,9 @@ jobs:
 
       - name: Verify review sign-off
         run: |
-          echo "⚠️  Gate 6 requires human review sign-off"
-          echo "Check: models/${{ inputs.model_name }}/REVIEW_SIGNOFF.md"
-          if [ ! -f "models/${{ inputs.model_name }}/REVIEW_SIGNOFF.md" ]; then
-            echo "::error::❌ Gate 6 FAILED — No independent review sign-off"
+          f="models/${MODEL_NAME}/REVIEW_SIGNOFF.md"
+          if [ ! -f "$f" ]; then
+            echo "::error::❌ Gate 6 FAILED — No independent review sign-off ($f)"
             exit 1
           fi
           echo "✅ Independent review documented"
@@ -79,15 +102,13 @@ jobs:
     name: "🚀 Deploy to Staging"
     runs-on: ubuntu-latest
     needs: gate-6-independent-review
-    if: inputs.environment == 'staging' || inputs.environment == 'production'
     environment: staging
     steps:
       - uses: actions/checkout@v4
       - name: Deploy model to staging
         run: |
-          echo "Deploying ${{ inputs.model_name }}:${{ inputs.model_version }} to staging..."
-          # Add actual deployment commands here
-          echo "✅ Staging deployment complete"
+          echo "Deploying ${MODEL_NAME}:${MODEL_VERSION} to staging..."
+          echo "::warning::Deployment target not configured yet — no-op (see ROADMAP)."
 
   # ── Deploy to Production (requires manual approval) ──
   deploy-production:
@@ -100,15 +121,15 @@ jobs:
       - uses: actions/checkout@v4
       - name: Deploy model to production
         run: |
-          echo "Deploying ${{ inputs.model_name }}:${{ inputs.model_version }} to production..."
-          # Add actual deployment commands here
-          echo "✅ Production deployment complete"
+          echo "Deploying ${MODEL_NAME}:${MODEL_VERSION} to production..."
+          echo "::warning::Deployment target not configured yet — no-op (see ROADMAP)."
 
-      - name: Log deployment to DECISION_LOG
+      - name: Record deployment in job summary
         run: |
-          echo "## Deployment: ${{ inputs.model_name }}:${{ inputs.model_version }}" >> DECISION_LOG.md
-          echo "- **Date:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> DECISION_LOG.md
-          echo "- **Environment:** production" >> DECISION_LOG.md
-          echo "- **Gate 3:** PASSED" >> DECISION_LOG.md
-          echo "- **Gate 6:** PASSED" >> DECISION_LOG.md
-          echo "- **Gate 7:** PASSED" >> DECISION_LOG.md
+          {
+            echo "## Deployment: ${MODEL_NAME}:${MODEL_VERSION}"
+            echo "- **Date:** $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "- **Environment:** production"
+            echo "- **Gate 3 / Gate 6:** verified by upstream jobs"
+            echo "- **Actor:** ${GITHUB_ACTOR}"
+          } >> "$GITHUB_STEP_SUMMARY"
