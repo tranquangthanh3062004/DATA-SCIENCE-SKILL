@@ -3,8 +3,7 @@
 # ╚══════════════════════════════════════════════════════════════════════════╝
 
 .PHONY: help install install-prod lint format typecheck test test-unit test-integration \
-        test-quality test-ml quality-check profile-data dbt-run dbt-test dbt-docs \
-        train evaluate serve docker-up docker-down docker-build docs-serve docs-build clean
+        test-quality test-ml dbt-run dbt-test dbt-docs docker-up docker-down docker-build clean
 
 PYTHON := python
 UV := uv
@@ -53,12 +52,6 @@ test-ml: ## Run ML pipeline tests
 	$(UV) run pytest -m ml
 
 # ── Data Quality ─────────────────────────────────────────────────────────
-quality-check: ## Run data quality checks (Great Expectations + Soda)
-	$(UV) run $(PYTHON) -m src.quality.run_checks
-
-profile-data: ## Profile dataset and generate DATA_QUALITY_REPORT.md
-	$(UV) run $(PYTHON) -m src.quality.profiler
-
 # ── dbt ──────────────────────────────────────────────────────────────────
 dbt-run: ## Run dbt models (Bronze → Silver → Gold)
 	cd dbt_project && dbt run
@@ -70,16 +63,7 @@ dbt-docs: ## Generate and serve dbt documentation
 	cd dbt_project && dbt docs generate && dbt docs serve
 
 # ── ML Pipeline ──────────────────────────────────────────────────────────
-train: ## Run ML training pipeline
-	$(UV) run $(PYTHON) -m src.ml.training.run_experiment
-
-evaluate: ## Run model evaluation
-	$(UV) run $(PYTHON) -m src.ml.evaluation.run_evaluation
-
 # ── Serving ──────────────────────────────────────────────────────────────
-serve: ## Start model serving API
-	$(UV) run uvicorn src.serving.app:app --host 0.0.0.0 --port 8000 --reload
-
 # ── Docker ───────────────────────────────────────────────────────────────
 docker-up: ## Start local development stack
 	docker compose up -d
@@ -91,12 +75,6 @@ docker-build: ## Build all Docker images
 	docker compose build
 
 # ── Documentation ────────────────────────────────────────────────────────
-docs-serve: ## Serve documentation locally
-	$(UV) run mkdocs serve
-
-docs-build: ## Build documentation site
-	$(UV) run mkdocs build
-
 # ── Cleanup ──────────────────────────────────────────────────────────────
 clean: ## Remove build artifacts and caches (cross-platform)
 	$(UV) run $(PYTHON) scripts/clean.py

@@ -37,7 +37,7 @@ metrics:
 
   - name: average_order_value
     display_name: "Average Order Value (AOV)"
-    formula: "SUM(transaction_amount) / COUNT(DISTINCT order_id) WHERE transaction_status = 'completed'"
+    formula: "SUM(transaction_amount) / COUNT(DISTINCT transaction_id) WHERE transaction_status = 'completed'"
     grain: daily
     unit: USD
     owner: analytics_team

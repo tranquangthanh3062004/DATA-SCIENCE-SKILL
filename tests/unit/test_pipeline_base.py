@@ -106,6 +106,19 @@ class TestBasePipeline:
         assert pipeline._metrics.status == PipelineStatus.FAILED
         assert "Source extraction failed" in pipeline._metrics.error_message
 
+    @pytest.mark.unit
+    def test_reused_pipeline_starts_with_fresh_run_metrics(self) -> None:
+        pipeline = SimpleWorkingPipeline()
+        first = pipeline.run([1])
+        first_run_id = first.run_id
+
+        second = pipeline.run([1, 2])
+
+        assert second.run_id != first_run_id
+        assert second.retry_count == 0
+        assert second.error_message == ""
+        assert second.rows_written == 2
+
 
 class FlakyPipeline(BasePipeline[list[int], list[int]]):
     """Extract fails with a transient error ``failures`` times, then succeeds."""

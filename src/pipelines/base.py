@@ -1,8 +1,8 @@
 """
 ADI-OS Pipeline Base
 
-Abstract base classes for building idempotent, observable, and
-recoverable data pipelines as required by QUALITY_GATE.md Gate 4.
+Abstract base classes for building observable and recoverable data pipelines
+as required by QUALITY_GATE.md Gate 4.
 """
 
 from __future__ import annotations
@@ -58,10 +58,13 @@ class BasePipeline(ABC, Generic[T_Input, T_Output]):
     Abstract base for all ADI-OS data pipelines.
 
     Guarantees:
-      - Idempotency (Gate 4 Check 1)
+      - A separate, traceable metrics record for each invocation
       - Structured logging with trace IDs (Gate 4 Check 4)
       - Retry with backoff (Gate 4 Check 3)
       - Metric collection for observability
+
+    ``load`` remains responsible for idempotency: the base class cannot infer
+    a destination's natural key, transaction semantics, or upsert strategy.
 
     Usage:
         class MyPipeline(BasePipeline[pd.DataFrame, pd.DataFrame]):
@@ -144,6 +147,12 @@ class BasePipeline(ABC, Generic[T_Input, T_Output]):
 
         Returns PipelineRunMetrics for observability.
         """
+        # A pipeline instance can be reused.  Never leak run ID, retry count,
+        # errors, or row metrics from a previous invocation into the next one.
+        self._metrics = PipelineRunMetrics(
+            pipeline_name=self.name,
+            run_id=new_trace_id(),
+        )
         set_context(task_id=f"PIPELINE-{self.name}", agent_id="data_engineer")
         self._metrics.start_time = datetime.now(UTC).isoformat()
         self._metrics.status = PipelineStatus.RUNNING

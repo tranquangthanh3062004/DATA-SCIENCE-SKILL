@@ -33,9 +33,9 @@ make test
 ### 2. Verify Local Stack
 After `docker compose up -d`, verify:
 - **PostgreSQL**: `localhost:5432` (user: `adi_user`, db: `adi_os`)
-- **Jupyter**: `http://localhost:8888` (token: `adi-os-dev`)
+- **Jupyter**: `http://localhost:8888` (token: value of `JUPYTER_TOKEN` in `.env`)
 - **MLflow**: `http://localhost:5000`
-- **Grafana**: `http://localhost:3000` (admin/admin)
+- **Grafana**: `http://localhost:3000` (admin / value of `GRAFANA_ADMIN_PASSWORD` in `.env`)
 
 ### 3. Key Commands
 ```bash
@@ -43,8 +43,8 @@ make help           # See all available commands
 make test           # Run all tests
 make lint           # Check code quality
 make format         # Auto-format code
-make quality-check  # Run data quality gates
-make serve          # Start model serving API
+make test-quality   # Run tests for Gate 1 validators
+make test-ml        # Run tests for Gate 3 experiment rules
 ```
 
 ---
@@ -174,10 +174,10 @@ print(report.to_markdown())
 ## ❓ FAQs
 
 **Q: Can I skip quality gates in development?**
-A: Gate 6 (Independent Review) is disabled in dev. All other gates are always active.
+A: No. Only checks actually executed can be reported as passed; Gate 6 needs an independent reviewer.
 
 **Q: Where do I put new data sources?**
-A: Add to `configs/data_sources.yml` and create a matching Data Contract in `contracts/`.
+A: Add a dbt source definition and a matching Data Contract before ingestion is implemented.
 
 **Q: How do I add a new metric?**
 A: Add it to `configs/metric_registry.yml` with a canonical formula, grain, and owner.

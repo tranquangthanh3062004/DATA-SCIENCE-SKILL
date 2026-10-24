@@ -32,11 +32,11 @@ ADI-OS is in **alpha**. The agent specifications (`.agents/`) are complete; the 
 | Area | Status |
 |---|---|
 | Agent skill, rules, protocols | Implemented |
-| Config, logging, Gate 1 validators, profiler, ML experiment (Gate 3) | Implemented, unit tested (`make lint typecheck test` pass) |
-| Pipeline base class | Implemented; retry, idempotency and run-tracking **Planned** |
-| dbt models | Examples only; sources, tests and profiles **Planned** |
+| Config, logging, Gate 1 validators, profiler, ML experiment (Gate 3) | Implemented; verification is run through the test, lint and type-check commands. |
+| Pipeline base class | Implemented; retries, per-run metrics and structured logging. Destination-specific idempotency is the implementer's responsibility. |
+| dbt models | Illustrative transaction models with source and model tests; not a production ingestion pipeline. |
 | Gates 2, 4, 5, 6, 7 automation | Partial (CI secret scan, deploy checks); the rest **Planned** |
-| `make quality-check`, `train`, `evaluate`, `serve`, `adi` CLI | **Planned** (modules not yet created) |
+| CLI, executable data-quality runner, training/evaluation and serving | **Planned** (not exposed as runnable commands) |
 | `monitoring/` (Grafana dashboards, runbooks) | **Planned** |
 | Artifact templates | 4 of 19 implemented |
 | Analytics, statistics, forecasting, causal, streaming modules | **Planned** |
@@ -310,16 +310,12 @@ make format           # Auto-fix formatting
 make test             # Run all tests
 make typecheck        # Static type checking
 
-# Data pipeline workflow
+# Data pipeline workflow (requires the local stack and dbt extra)
 make docker-up        # Start local stack
 make dbt-run          # Run medallion transformations
 make dbt-test         # Validate data quality
-make quality-check    # Run Gate 1 checks
 
-# ML workflow
-make train            # Run ML experiment
-make evaluate         # Evaluate model performance
-make serve            # Start model API server
+# Gate 1 and Gate 3 are Python APIs; see the onboarding examples.
 
 # Cleanup
 make clean            # Remove build artifacts

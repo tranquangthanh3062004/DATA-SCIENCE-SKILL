@@ -67,7 +67,7 @@ class DatabaseSettings(BaseSettings):
     database: str = "adi_os"
     schema_: str = Field(default="public", alias="DWH_SCHEMA")
     user: str = "adi_user"
-    password: SecretStr = SecretStr("changeme")
+    password: SecretStr = SecretStr("")
 
     @property
     def connection_string(self) -> str:
